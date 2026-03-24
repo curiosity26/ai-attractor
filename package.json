@@ -1,0 +1,20 @@
+{
+  "name": "attractor",
+  "version": "0.1.0",
+  "private": true,
+  "description": "DOT-based pipeline runner for multi-stage AI workflows",
+  "type": "module",
+  "scripts": {
+    "run": "tsx cli.ts run",
+    "validate": "tsx cli.ts validate",
+    "build": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitest": "^4.1.1"
+  }
+}

@@ -8,7 +8,7 @@
   },
   "type": "module",
   "bin": {
-    "attractor": "./dist/cli.js"
+    "ai-attractor": "./dist/cli.js"
   },
   "scripts": {
     "run": "tsx cli.ts run",

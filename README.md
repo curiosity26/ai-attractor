@@ -16,6 +16,14 @@ Although bringing your own agentic loop and unified LLM SDK is not required to b
 
 ## Install
 
+### From GitHub Packages
+
+```bash
+npm install @curiosity26/ai-attractor --registry=https://npm.pkg.github.com
+```
+
+### From source
+
 ```bash
 git clone git@github.com:curiosity26/ai-attractor.git
 cd ai-attractor
@@ -23,24 +31,31 @@ npm install
 npm run build
 ```
 
-### Global command (optional)
-
-After building, link the `attractor` command globally:
+To link the `attractor` command globally:
 
 ```bash
 npm link
 ```
 
-This makes `attractor` available anywhere on your system. To unlink later: `npm unlink -g attractor`.
+To unlink later: `npm unlink -g @curiosity26/ai-attractor`
+
+The global command will be `ai-attractor`.
 
 ## Usage
 
-If linked globally:
+### Via npx (no install required)
 
 ```bash
-attractor run <pipeline.dot> [options]
-attractor validate <pipeline.dot>
-attractor inspect <pipeline.dot>
+npx --registry=https://npm.pkg.github.com @curiosity26/ai-ai-attractor run <pipeline.dot> [options]
+npx --registry=https://npm.pkg.github.com @curiosity26/ai-ai-attractor validate <pipeline.dot>
+```
+
+### If installed or linked globally:
+
+```bash
+ai-attractor run <pipeline.dot> [options]
+ai-attractor validate <pipeline.dot>
+ai-attractor inspect <pipeline.dot>
 ```
 
 Without linking, use tsx directly:
@@ -61,7 +76,7 @@ npm run validate -- <pipeline.dot>
 ### Example
 
 ```bash
-attractor run test-pipelines/01-sequential.dot --verbose
+ai-attractor run test-pipelines/01-sequential.dot --verbose
 ```
 
 ## Supported Providers

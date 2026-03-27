@@ -22,9 +22,9 @@ function usage(): void {
 ${BOLD}Attractor${RESET} — DOT-based pipeline runner for multi-stage AI workflows
 
 ${BOLD}Usage:${RESET}
-  attractor ${CYAN}run${RESET} <dotfile> [options]     Run a pipeline
-  attractor ${CYAN}validate${RESET} <dotfile>          Validate a pipeline
-  attractor ${CYAN}inspect${RESET} <dotfile>           Inspect pipeline structure
+  ai-attractor ${CYAN}run${RESET} <dotfile> [options]     Run a pipeline
+  ai-attractor ${CYAN}validate${RESET} <dotfile>          Validate a pipeline
+  ai-attractor ${CYAN}inspect${RESET} <dotfile>           Inspect pipeline structure
 
 ${BOLD}Options:${RESET}
   --resume          Resume from last checkpoint
@@ -127,7 +127,7 @@ async function cmdRun(args: string[]): Promise<void> {
 
 function cmdValidate(args: string[]): void {
   if (args.length === 0) {
-    console.error(`${RED}Usage: attractor validate <dotfile>${RESET}`)
+    console.error(`${RED}Usage: ai-attractor validate <dotfile>${RESET}`)
     process.exit(1)
   }
 
@@ -202,7 +202,7 @@ function cmdValidate(args: string[]): void {
 
 function cmdInspect(args: string[]): void {
   if (args.length === 0) {
-    console.error(`${RED}Usage: attractor inspect <dotfile>${RESET}`)
+    console.error(`${RED}Usage: ai-attractor inspect <dotfile>${RESET}`)
     process.exit(1)
   }
 
@@ -262,7 +262,7 @@ function parseRunArgs(args: string[]): { dotFile: string; resume: boolean; logsD
   }
 
   if (!dotFile) {
-    console.error(`${RED}Usage: attractor run <dotfile> [--resume] [--logs-dir <dir>]${RESET}`)
+    console.error(`${RED}Usage: ai-attractor run <dotfile> [--resume] [--logs-dir <dir>]${RESET}`)
     process.exit(1)
   }
 

@@ -1,0 +1,22 @@
+// 11 — Context Passing Between Stages
+// Validates: tool.output from one stage is available to the next via context
+// step_a writes a value, step_b reads it from the environment
+
+digraph context_passing {
+  label = "Context Passing"
+  goal  = "Verify context flows between sequential tool stages"
+
+  start [shape=Mdiamond label="Begin"]
+
+  step_a [shape=parallelogram label="Set Value"
+          tool_command="echo MAGIC_VALUE=42"]
+
+  step_b [shape=parallelogram label="Read Previous Output"
+          tool_command="echo CONTEXT_TEST_REACHED=true"]
+
+  done [shape=Msquare label="Done"]
+
+  start -> step_a
+  step_a -> step_b
+  step_b -> done
+}

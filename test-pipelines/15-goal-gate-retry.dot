@@ -1,0 +1,27 @@
+// 15 — Goal Gate with Retry Target
+// Validates: goal_gate + retry_target causes the engine to loop back
+// Uses a counter file — prepare resets it, critical increments and
+// fails until count reaches 2. retry_target points at critical itself
+// so prepare only runs once.
+
+digraph goal_gate_retry {
+  label = "Goal Gate with Retry"
+  goal  = "Verify goal gate triggers retry from specified target"
+
+  start [shape=Mdiamond label="Begin"]
+
+  prepare [shape=parallelogram label="Prepare (reset counter)"
+           tool_command="echo 0 > /tmp/attractor-gate-counter && echo PREPARED"]
+
+  critical [shape=parallelogram label="Critical Step"
+            goal_gate=true
+            retry_target="critical"
+            tool_command="FILE=/tmp/attractor-gate-counter && COUNT=$(cat $FILE 2>/dev/null || echo 0) && COUNT=$((COUNT+1)) && echo $COUNT > $FILE && echo ATTEMPT=$COUNT && if [ $COUNT -lt 2 ]; then exit 1; fi && rm -f $FILE && echo GATE_PASSED"]
+
+  done [shape=Msquare label="Done"]
+
+  start -> prepare
+  prepare -> critical
+  critical -> done [condition="outcome=success"]
+  critical -> done [condition="outcome=fail"]
+}

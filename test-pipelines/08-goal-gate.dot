@@ -1,0 +1,20 @@
+// 08 — Goal Gate Enforcement
+// Validates: goal_gate=true on a failed node causes pipeline failure at exit
+// The critical_step fails, is marked as goal_gate → pipeline should fail
+
+digraph goal_gate {
+  label = "Goal Gate Enforcement"
+  goal  = "Verify goal gates block pipeline completion on failure"
+
+  start [shape=Mdiamond label="Begin"]
+
+  critical_step [shape=parallelogram label="Critical Step (fails)"
+                 goal_gate=true
+                 tool_command="echo CRITICAL_FAILED && exit 1"]
+
+  done [shape=Msquare label="Done"]
+
+  start -> critical_step
+  critical_step -> done [condition="outcome=fail"]
+  critical_step -> done [condition="outcome=success"]
+}

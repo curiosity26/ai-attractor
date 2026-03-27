@@ -1,0 +1,38 @@
+// 02 — Parallel Execution Timing Proof
+// Validates: shape=component triggers concurrent execution
+// If branches run concurrently, total time ≈ max(branch) ≈ 3s
+// If sequential, total time ≈ sum(branches) ≈ 6s
+
+digraph parallel_timing {
+  label = "Parallel Timing Proof"
+  goal  = "Prove parallel branches execute concurrently via wall-clock timing"
+
+  start [shape=Mdiamond label="Begin"]
+
+  fan_out [shape=component label="Fan Out"
+           max_parallel=4 join_policy="wait_all"]
+
+  branch_a [shape=parallelogram label="Branch A (2s sleep)"
+            tool_command="echo BRANCH_A_START=$(date +%s.%N) && sleep 2 && echo BRANCH_A_END=$(date +%s.%N)"]
+
+  branch_b [shape=parallelogram label="Branch B (3s sleep)"
+            tool_command="echo BRANCH_B_START=$(date +%s.%N) && sleep 3 && echo BRANCH_B_END=$(date +%s.%N)"]
+
+  branch_c [shape=parallelogram label="Branch C (1s sleep)"
+            tool_command="echo BRANCH_C_START=$(date +%s.%N) && sleep 1 && echo BRANCH_C_END=$(date +%s.%N)"]
+
+  fan_in [shape=tripleoctagon label="Merge Results"]
+
+  done [shape=Msquare label="Done"]
+
+  start -> fan_out
+  fan_out -> branch_a
+  fan_out -> branch_b
+  fan_out -> branch_c
+
+  branch_a -> fan_in
+  branch_b -> fan_in
+  branch_c -> fan_in
+
+  fan_in -> done
+}

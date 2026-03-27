@@ -1,0 +1,19 @@
+// 05 — Retry Policy
+// Validates: max_retries causes re-execution on failure
+// Uses a file counter — first 2 calls fail, 3rd succeeds
+
+digraph retry_policy {
+  label = "Retry Policy Test"
+  goal  = "Verify retry with backoff works correctly"
+
+  start [shape=Mdiamond label="Begin"]
+
+  flaky [shape=parallelogram label="Flaky Step (fails twice, then succeeds)"
+         max_retries=3
+         tool_command="FILE=/tmp/attractor-retry-test-$$ && COUNT=$(cat $FILE 2>/dev/null || echo 0) && COUNT=$((COUNT+1)) && echo $COUNT > $FILE && echo ATTEMPT=$COUNT && if [ $COUNT -lt 3 ]; then exit 1; fi && rm -f $FILE && echo RETRY_SUCCESS=true"]
+
+  done [shape=Msquare label="Done"]
+
+  start -> flaky
+  flaky -> done
+}

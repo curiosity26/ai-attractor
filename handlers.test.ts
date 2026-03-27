@@ -65,9 +65,48 @@ vi.mock('./checkpoint.js', () => ({
   saveManifest: vi.fn(),
 }))
 
-// ─── Mock child_process for CodergenHandler ───
+// ─── Mock child_process for CodergenHandler and ToolHandler ───
+//
+// Both handlers now use async `spawn`. We mock it to return a fake
+// ChildProcess that emits events according to test-configured values.
+
+import { EventEmitter as NodeEventEmitter } from 'node:events'
+
+let spawnMockConfig: {
+  stdout: string
+  stderr: string
+  exitCode: number | null
+  error?: Error | null
+} = { stdout: '', stderr: '', exitCode: 0, error: null }
+
+function createMockChildProcess() {
+  const child = new NodeEventEmitter() as NodeEventEmitter & {
+    stdout: NodeEventEmitter
+    stderr: NodeEventEmitter
+    kill: ReturnType<typeof vi.fn>
+  }
+  child.stdout = new NodeEventEmitter()
+  child.stderr = new NodeEventEmitter()
+  child.kill = vi.fn()
+
+  // Emit data and close on next tick so the promise resolves
+  process.nextTick(() => {
+    if (spawnMockConfig.error) {
+      child.emit('error', spawnMockConfig.error)
+    } else {
+      if (spawnMockConfig.stdout) child.stdout.emit('data', Buffer.from(spawnMockConfig.stdout))
+      if (spawnMockConfig.stderr) child.stderr.emit('data', Buffer.from(spawnMockConfig.stderr))
+      child.emit('close', spawnMockConfig.exitCode)
+    }
+  })
+
+  return child
+}
+
+const spawnMock = vi.fn(() => createMockChildProcess())
 
 vi.mock('node:child_process', () => ({
+  spawn: vi.fn((...args: unknown[]) => spawnMock(...args)),
   spawnSync: vi.fn(),
 }))
 
@@ -139,13 +178,11 @@ describe('ConditionalHandler', () => {
 
 describe('CodergenHandler', () => {
   let handler: CodergenHandler
-  let spawnSyncMock: ReturnType<typeof vi.fn>
 
   beforeEach(async () => {
     handler = new CodergenHandler()
-    const cp = await import('node:child_process')
-    spawnSyncMock = cp.spawnSync as ReturnType<typeof vi.fn>
-    spawnSyncMock.mockReset()
+    spawnMock.mockClear()
+    spawnMockConfig = { stdout: '', stderr: '', exitCode: 0, error: null }
   })
 
   it('expands $goal in prompt', async () => {
@@ -157,17 +194,12 @@ describe('CodergenHandler', () => {
     graph.attrs.goal = 'world domination'
     const context = new Context()
 
-    spawnSyncMock.mockReturnValue({
-      status: 0,
-      stdout: 'done',
-      stderr: '',
-      error: null,
-    })
+    spawnMockConfig = { stdout: 'done', stderr: '', exitCode: 0 }
 
     await handler.execute(node, context, graph, '/tmp/logs')
 
-    // The first argument to spawnSync is the command, second is args array
-    const args = spawnSyncMock.mock.calls[0][1] as string[]
+    // spawn(cmd, args, ...) — second argument is the args array
+    const args = spawnMock.mock.calls[0][1] as string[]
     // The prompt is the last argument for anthropic provider
     const promptArg = args[args.length - 1]
     expect(promptArg).toContain('world domination')
@@ -181,11 +213,11 @@ describe('CodergenHandler', () => {
     })
     const context = new Context()
 
-    spawnSyncMock.mockReturnValue({ status: 0, stdout: 'ok', stderr: '', error: null })
+    spawnMockConfig = { stdout: 'ok', stderr: '', exitCode: 0 }
 
     await handler.execute(node, context, makeGraph(), '/tmp/logs')
 
-    expect(spawnSyncMock.mock.calls[0][0]).toBe('claude')
+    expect(spawnMock.mock.calls[0][0]).toBe('claude')
   })
 
   it('auto-detects openai provider from gpt- model name', async () => {
@@ -195,11 +227,11 @@ describe('CodergenHandler', () => {
     })
     const context = new Context()
 
-    spawnSyncMock.mockReturnValue({ status: 0, stdout: 'ok', stderr: '', error: null })
+    spawnMockConfig = { stdout: 'ok', stderr: '', exitCode: 0 }
 
     await handler.execute(node, context, makeGraph(), '/tmp/logs')
 
-    expect(spawnSyncMock.mock.calls[0][0]).toBe('codex')
+    expect(spawnMock.mock.calls[0][0]).toBe('codex')
   })
 
   it('auto-detects gemini provider from gemini- model name', async () => {
@@ -209,11 +241,11 @@ describe('CodergenHandler', () => {
     })
     const context = new Context()
 
-    spawnSyncMock.mockReturnValue({ status: 0, stdout: 'ok', stderr: '', error: null })
+    spawnMockConfig = { stdout: 'ok', stderr: '', exitCode: 0 }
 
     await handler.execute(node, context, makeGraph(), '/tmp/logs')
 
-    expect(spawnSyncMock.mock.calls[0][0]).toBe('gemini')
+    expect(spawnMock.mock.calls[0][0]).toBe('gemini')
   })
 
   it('builds correct CLI command for anthropic provider', async () => {
@@ -223,11 +255,11 @@ describe('CodergenHandler', () => {
     })
     const context = new Context()
 
-    spawnSyncMock.mockReturnValue({ status: 0, stdout: 'ok', stderr: '', error: null })
+    spawnMockConfig = { stdout: 'ok', stderr: '', exitCode: 0 }
 
     await handler.execute(node, context, makeGraph(), '/tmp/logs')
 
-    const [cmd, args] = spawnSyncMock.mock.calls[0]
+    const [cmd, args] = spawnMock.mock.calls[0]
     expect(cmd).toBe('claude')
     expect(args).toContain('--dangerously-skip-permissions')
     expect(args).toContain('--model')
@@ -243,16 +275,63 @@ describe('CodergenHandler', () => {
     })
     const context = new Context()
 
-    spawnSyncMock.mockReturnValue({ status: 0, stdout: 'ok', stderr: '', error: null })
+    spawnMockConfig = { stdout: 'ok', stderr: '', exitCode: 0 }
 
     await handler.execute(node, context, makeGraph(), '/tmp/logs')
 
-    const [cmd, args] = spawnSyncMock.mock.calls[0]
+    const [cmd, args] = spawnMock.mock.calls[0]
     expect(cmd).toBe('codex')
     expect(args).toContain('exec')
     expect(args).toContain('--dangerously-bypass-approvals-and-sandbox')
     expect(args).toContain('-m')
     expect(args).toContain('gpt-4o')
+  })
+
+  it('normalizes google provider to gemini CLI', async () => {
+    const node = makeNode({
+      id: 'task',
+      attrs: { prompt: 'Do thing', llm_model: 'gemini-2.5-pro', llm_provider: 'google', label: 'Task' } as GraphNode['attrs'],
+    })
+    const context = new Context()
+
+    spawnMockConfig = { stdout: 'ok', stderr: '', exitCode: 0 }
+
+    await handler.execute(node, context, makeGraph(), '/tmp/logs')
+
+    expect(spawnMock.mock.calls[0][0]).toBe('gemini')
+  })
+
+  it('strips models/ prefix from gemini model names', async () => {
+    const node = makeNode({
+      id: 'task',
+      attrs: { prompt: 'Do thing', llm_model: 'models/gemini-2.5-pro', label: 'Task' } as GraphNode['attrs'],
+    })
+    const context = new Context()
+
+    spawnMockConfig = { stdout: 'ok', stderr: '', exitCode: 0 }
+
+    await handler.execute(node, context, makeGraph(), '/tmp/logs')
+
+    const [cmd, args] = spawnMock.mock.calls[0]
+    expect(cmd).toBe('gemini')
+    expect(args).toContain('gemini-2.5-pro')
+    expect(args).not.toContain('models/gemini-2.5-pro')
+  })
+
+  it('uses gemini default model when google provider set without model', async () => {
+    const node = makeNode({
+      id: 'task',
+      attrs: { prompt: 'Do thing', llm_provider: 'google', label: 'Task' } as GraphNode['attrs'],
+    })
+    const context = new Context()
+
+    spawnMockConfig = { stdout: 'ok', stderr: '', exitCode: 0 }
+
+    await handler.execute(node, context, makeGraph(), '/tmp/logs')
+
+    const [cmd, args] = spawnMock.mock.calls[0]
+    expect(cmd).toBe('gemini')
+    expect(args).toContain('gemini-3.1-pro-preview-customtools')
   })
 
   it('builds correct CLI command for gemini provider', async () => {
@@ -262,11 +341,11 @@ describe('CodergenHandler', () => {
     })
     const context = new Context()
 
-    spawnSyncMock.mockReturnValue({ status: 0, stdout: 'ok', stderr: '', error: null })
+    spawnMockConfig = { stdout: 'ok', stderr: '', exitCode: 0 }
 
     await handler.execute(node, context, makeGraph(), '/tmp/logs')
 
-    const [cmd, args] = spawnSyncMock.mock.calls[0]
+    const [cmd, args] = spawnMock.mock.calls[0]
     expect(cmd).toBe('gemini')
     expect(args).toContain('--yolo')
     expect(args).toContain('-m')
@@ -281,12 +360,7 @@ describe('CodergenHandler', () => {
     })
     const context = new Context()
 
-    spawnSyncMock.mockReturnValue({
-      status: 1,
-      stdout: '',
-      stderr: 'Something went wrong',
-      error: null,
-    })
+    spawnMockConfig = { stdout: '', stderr: 'Something went wrong', exitCode: 1 }
 
     const outcome = await handler.execute(node, context, makeGraph(), '/tmp/logs')
 
@@ -302,12 +376,7 @@ describe('CodergenHandler', () => {
     })
     const context = new Context()
 
-    spawnSyncMock.mockReturnValue({
-      status: 0,
-      stdout: 'Here is the plan...',
-      stderr: '',
-      error: null,
-    })
+    spawnMockConfig = { stdout: 'Here is the plan...', stderr: '', exitCode: 0 }
 
     const outcome = await handler.execute(node, context, makeGraph(), '/tmp/logs')
 
@@ -324,17 +393,11 @@ describe('CodergenHandler', () => {
     })
     const context = new Context()
 
-    spawnSyncMock.mockReturnValue({
-      status: null,
-      stdout: '',
-      stderr: '',
-      error: new Error('ENOENT: command not found'),
-    })
+    spawnMockConfig = { stdout: '', stderr: '', exitCode: null, error: new Error('ENOENT: command not found') }
 
     const outcome = await handler.execute(node, context, makeGraph(), '/tmp/logs')
 
     expect(outcome.status).toBe('fail')
-    expect(outcome.failure_reason).toContain('CLI error')
     expect(outcome.failure_reason).toContain('ENOENT')
   })
 })

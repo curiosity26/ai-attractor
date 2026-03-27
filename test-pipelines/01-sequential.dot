@@ -1,0 +1,25 @@
+// 01 — Basic Sequential Pipeline
+// Validates: start → tool → tool → exit, linear execution, context passing
+
+digraph sequential_basic {
+  label = "Sequential Tool Pipeline"
+  goal  = "Verify basic sequential execution with tool nodes"
+
+  start [shape=Mdiamond label="Begin"]
+
+  step_a [shape=parallelogram label="Step A: Write timestamp"
+          tool_command="echo STEP_A_RAN_AT=$(date +%s)"]
+
+  step_b [shape=parallelogram label="Step B: List cwd"
+          tool_command="ls -1 | head -5"]
+
+  step_c [shape=parallelogram label="Step C: Echo done"
+          tool_command="echo SEQUENTIAL_COMPLETE"]
+
+  done [shape=Msquare label="Done"]
+
+  start -> step_a
+  step_a -> step_b
+  step_b -> step_c
+  step_c -> done
+}

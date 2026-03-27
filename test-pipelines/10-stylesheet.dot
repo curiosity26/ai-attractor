@@ -1,0 +1,30 @@
+// 10 — Stylesheet Application
+// Validates: model_stylesheet applies LLM config to nodes by selector
+// We use tool nodes here, so LLM isn't invoked — but we can validate
+// the stylesheet was parsed by inspecting via `attractor inspect`
+
+digraph stylesheet_test {
+  label = "Stylesheet Application"
+  goal  = "Verify stylesheet selectors apply attributes to nodes"
+
+  model_stylesheet = "* { llm_model: \"claude-sonnet-4-20250514\"; llm_provider: \"anthropic\"; } .fast { llm_model: \"claude-haiku-4-5-20251001\"; reasoning_effort: \"low\"; } #custom_node { llm_model: \"gpt-4o\"; llm_provider: \"openai\"; }"
+
+  start [shape=Mdiamond label="Begin"]
+
+  normal_node [shape=parallelogram label="Normal (inherits *)"
+               tool_command="echo STYLESHEET_NORMAL"]
+
+  fast_node [shape=parallelogram label="Fast (class=fast)"
+             class="fast"
+             tool_command="echo STYLESHEET_FAST"]
+
+  custom_node [shape=parallelogram label="Custom (ID override)"
+               tool_command="echo STYLESHEET_CUSTOM"]
+
+  done [shape=Msquare label="Done"]
+
+  start -> normal_node
+  normal_node -> fast_node
+  fast_node -> custom_node
+  custom_node -> done
+}

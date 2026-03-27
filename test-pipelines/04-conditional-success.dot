@@ -1,0 +1,26 @@
+// 04 — Conditional Edge Selection (success path)
+// Validates: when a node succeeds, outcome=success condition is taken
+
+digraph conditional_success {
+  label = "Conditional Success Path"
+  goal  = "Verify success-path condition routing"
+
+  start [shape=Mdiamond label="Begin"]
+
+  step_ok [shape=parallelogram label="Succeeding Step"
+           tool_command="echo SUCCESS_STEP_RAN=true"]
+
+  on_success [shape=parallelogram label="Success Handler"
+              tool_command="echo SUCCESS_PATH_TAKEN=true"]
+
+  on_fail [shape=parallelogram label="Failure Handler (should NOT run)"
+           tool_command="echo FAIL_PATH_TAKEN=true"]
+
+  done [shape=Msquare label="Done"]
+
+  start -> step_ok
+  step_ok -> on_success [condition="outcome=success" label="on success"]
+  step_ok -> on_fail    [condition="outcome=fail"    label="on failure"]
+  on_success -> done
+  on_fail -> done
+}

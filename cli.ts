@@ -22,9 +22,9 @@ function usage(): void {
 ${BOLD}Attractor${RESET} — DOT-based pipeline runner for multi-stage AI workflows
 
 ${BOLD}Usage:${RESET}
-  npx tsx attractor/cli.ts ${CYAN}run${RESET} <dotfile> [options]     Run a pipeline
-  npx tsx attractor/cli.ts ${CYAN}validate${RESET} <dotfile>          Validate a pipeline
-  npx tsx attractor/cli.ts ${CYAN}inspect${RESET} <dotfile>           Inspect pipeline structure
+  attractor ${CYAN}run${RESET} <dotfile> [options]     Run a pipeline
+  attractor ${CYAN}validate${RESET} <dotfile>          Validate a pipeline
+  attractor ${CYAN}inspect${RESET} <dotfile>           Inspect pipeline structure
 
 ${BOLD}Options:${RESET}
   --resume          Resume from last checkpoint

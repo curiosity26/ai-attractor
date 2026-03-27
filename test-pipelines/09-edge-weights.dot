@@ -1,0 +1,27 @@
+// 09 — Edge Weight Priority
+// Validates: when multiple unconditional edges exist, highest weight wins
+// Two edges from router → heavy_path (weight=10) should be selected over light_path (weight=1)
+
+digraph edge_weights {
+  label = "Edge Weight Priority"
+  goal  = "Verify higher-weight edges are preferred"
+
+  start [shape=Mdiamond label="Begin"]
+
+  router [shape=parallelogram label="Router"
+          tool_command="echo ROUTING"]
+
+  heavy_path [shape=parallelogram label="Heavy Path (weight 10)"
+              tool_command="echo HEAVY_PATH_TAKEN=true"]
+
+  light_path [shape=parallelogram label="Light Path (weight 1)"
+              tool_command="echo LIGHT_PATH_TAKEN=true"]
+
+  done [shape=Msquare label="Done"]
+
+  start -> router
+  router -> heavy_path [weight=10]
+  router -> light_path [weight=1]
+  heavy_path -> done
+  light_path -> done
+}

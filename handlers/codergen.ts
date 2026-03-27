@@ -2,7 +2,7 @@
 // Supports: Claude (anthropic), Codex (openai), Gemini (google/gemini)
 // Resolves the correct CLI from the node's llm_provider attribute or model stylesheet.
 
-import { spawnSync } from 'node:child_process'
+import { spawn } from 'node:child_process'
 import { Handler, GraphNode, Graph, ContextStore, Outcome } from '../types.js'
 import { writeStagePrompt, writeStageResponse, writeStageStatus } from '../checkpoint.js'
 
@@ -15,6 +15,15 @@ const PROVIDER_DEFAULTS: Record<string, string> = {
   gemini: 'gemini-3.1-pro-preview-customtools',
 }
 
+// Canonical provider aliases — normalize before any lookup
+const PROVIDER_ALIASES: Record<string, string> = {
+  google: 'gemini',
+}
+
+function normalizeProvider(provider: string): string {
+  return PROVIDER_ALIASES[provider] || provider
+}
+
 // Auto-detect provider from model name
 function detectProvider(model: string): string {
   if (model.startsWith('claude-') || model.startsWith('opus') || model.startsWith('sonnet') || model.startsWith('haiku')) {
@@ -23,7 +32,7 @@ function detectProvider(model: string): string {
   if (model.startsWith('gpt-') || model.startsWith('o') || model.includes('codex')) {
     return 'openai'
   }
-  if (model.startsWith('gemini-')) {
+  if (model.startsWith('gemini-') || model.startsWith('gemini/') || model.startsWith('models/gemini-')) {
     return 'gemini'
   }
   // Default to anthropic
@@ -49,7 +58,7 @@ function buildCliCommand(provider: string, model: string, prompt: string): { cmd
         cmd: 'gemini',
         args: [
           '--yolo',
-          '-m', model,
+          '-m', model.replace(/^models\//, ''),
           '-p', prompt,
         ],
       }
@@ -68,6 +77,45 @@ function buildCliCommand(provider: string, model: string, prompt: string): { cmd
   }
 }
 
+function execAsync(
+  cmd: string,
+  args: string[],
+  timeoutMs: number,
+): Promise<{ stdout: string; stderr: string; exitCode: number | null; error?: Error }> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(cmd, args, {
+      cwd: process.cwd(),
+      env: process.env,
+    })
+
+    let stdout = ''
+    let stderr = ''
+    let killed = false
+
+    child.stdout.on('data', (chunk: Buffer) => { stdout += chunk.toString() })
+    child.stderr.on('data', (chunk: Buffer) => { stderr += chunk.toString() })
+
+    const timer = setTimeout(() => {
+      killed = true
+      child.kill('SIGTERM')
+    }, timeoutMs)
+
+    child.on('close', (code) => {
+      clearTimeout(timer)
+      if (killed) {
+        resolve({ stdout, stderr, exitCode: code, error: new Error(`Timed out after ${timeoutMs}ms`) })
+      } else {
+        resolve({ stdout, stderr, exitCode: code })
+      }
+    })
+
+    child.on('error', (err) => {
+      clearTimeout(timer)
+      reject(err)
+    })
+  })
+}
+
 export class CodergenHandler implements Handler {
   async execute(
     node: GraphNode,
@@ -84,7 +132,7 @@ export class CodergenHandler implements Handler {
 
     // 3. Resolve provider and model
     const model = node.attrs.llm_model || ''
-    const explicitProvider = node.attrs.llm_provider || ''
+    const explicitProvider = normalizeProvider(node.attrs.llm_provider || '')
     const provider = explicitProvider || (model ? detectProvider(model) : 'anthropic')
     const resolvedModel = model || PROVIDER_DEFAULTS[provider] || PROVIDER_DEFAULTS.anthropic
 
@@ -98,12 +146,7 @@ export class CodergenHandler implements Handler {
     try {
       console.log(`    \x1b[2m→ ${displayName} via ${cmd}\x1b[0m`)
 
-      const result = spawnSync(cmd, args, {
-        cwd: process.cwd(),
-        encoding: 'utf-8',
-        timeout: timeoutMs,
-        maxBuffer: 10 * 1024 * 1024, // 10MB
-      })
+      const result = await execAsync(cmd, args, timeoutMs)
 
       if (result.error) {
         const outcome: Outcome = {
@@ -114,11 +157,11 @@ export class CodergenHandler implements Handler {
         return outcome
       }
 
-      if (result.status !== 0) {
+      if (result.exitCode !== 0) {
         const stderr = result.stderr?.trim() || 'Unknown error'
         const outcome: Outcome = {
           status: 'fail',
-          failure_reason: `${displayName} CLI exited with code ${result.status}: ${stderr}`,
+          failure_reason: `${displayName} CLI exited with code ${result.exitCode}: ${stderr}`,
         }
         writeStageResponse(logsRoot, node.id, result.stdout || '')
         writeStageStatus(logsRoot, node.id, outcome)

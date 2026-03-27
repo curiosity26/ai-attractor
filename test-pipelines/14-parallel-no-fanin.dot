@@ -1,0 +1,31 @@
+// 14 — Parallel Without Fan-In Node
+// Validates: parallel execution works even without a tripleoctagon fan-in
+// Engine falls back to join policy evaluation directly
+
+digraph parallel_no_fanin {
+  label = "Parallel Without Explicit Fan-In"
+  goal  = "Verify parallel works with implicit join (no tripleoctagon node)"
+
+  start [shape=Mdiamond label="Begin"]
+
+  fan_out [shape=component label="Fan Out"
+           max_parallel=4 join_policy="wait_all"]
+
+  branch_a [shape=parallelogram label="Branch A"
+            tool_command="echo BRANCH_A=done"]
+
+  branch_b [shape=parallelogram label="Branch B"
+            tool_command="echo BRANCH_B=done"]
+
+  next [shape=parallelogram label="After Parallel"
+        tool_command="echo AFTER_PARALLEL=true"]
+
+  done [shape=Msquare label="Done"]
+
+  fan_out -> branch_a
+  fan_out -> branch_b
+
+  start -> fan_out
+  fan_out -> next
+  next -> done
+}

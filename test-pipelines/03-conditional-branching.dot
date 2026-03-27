@@ -1,0 +1,27 @@
+// 03 — Conditional Edge Selection
+// Validates: edge conditions route based on outcome status
+// step_fail always fails → condition "outcome=fail" edge should be taken
+
+digraph conditional_branching {
+  label = "Conditional Branching"
+  goal  = "Verify condition-based edge selection"
+
+  start [shape=Mdiamond label="Begin"]
+
+  step_fail [shape=parallelogram label="Intentional Failure"
+             tool_command="echo 'About to fail' && exit 1"]
+
+  recovery [shape=parallelogram label="Recovery Path"
+            tool_command="echo RECOVERY_TAKEN=true"]
+
+  happy_path [shape=parallelogram label="Happy Path (should NOT run)"
+              tool_command="echo HAPPY_PATH_TAKEN=true"]
+
+  done [shape=Msquare label="Done"]
+
+  start -> step_fail
+  step_fail -> recovery  [condition="outcome=fail"     label="on failure"]
+  step_fail -> happy_path [condition="outcome=success"  label="on success"]
+  recovery -> done
+  happy_path -> done
+}

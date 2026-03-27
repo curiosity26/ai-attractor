@@ -1,0 +1,43 @@
+// 12 — Bounded Parallel Concurrency
+// Validates: max_parallel=2 causes 4 branches to run in 2 chunks of 2
+// With 2s sleeps and max_parallel=2: total ≈ 4s (2 chunks × 2s)
+// With max_parallel=4 it would be ≈ 2s
+
+digraph parallel_bounded {
+  label = "Bounded Parallel Concurrency"
+  goal  = "Verify max_parallel limits concurrent branch execution"
+
+  start [shape=Mdiamond label="Begin"]
+
+  fan_out [shape=component label="Fan Out (max 2 concurrent)"
+           max_parallel=2 join_policy="wait_all"]
+
+  b1 [shape=parallelogram label="Branch 1 (2s)"
+      tool_command="echo B1_START=$(date +%s.%N) && sleep 2 && echo B1_END=$(date +%s.%N)"]
+
+  b2 [shape=parallelogram label="Branch 2 (2s)"
+      tool_command="echo B2_START=$(date +%s.%N) && sleep 2 && echo B2_END=$(date +%s.%N)"]
+
+  b3 [shape=parallelogram label="Branch 3 (2s)"
+      tool_command="echo B3_START=$(date +%s.%N) && sleep 2 && echo B3_END=$(date +%s.%N)"]
+
+  b4 [shape=parallelogram label="Branch 4 (2s)"
+      tool_command="echo B4_START=$(date +%s.%N) && sleep 2 && echo B4_END=$(date +%s.%N)"]
+
+  fan_in [shape=tripleoctagon label="Merge"]
+
+  done [shape=Msquare label="Done"]
+
+  start -> fan_out
+  fan_out -> b1
+  fan_out -> b2
+  fan_out -> b3
+  fan_out -> b4
+
+  b1 -> fan_in
+  b2 -> fan_in
+  b3 -> fan_in
+  b4 -> fan_in
+
+  fan_in -> done
+}

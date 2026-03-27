@@ -1,0 +1,49 @@
+// 13 — Mixed Pipeline: Sequential + Parallel + Conditional
+// Validates: all major features compose correctly in a single pipeline
+
+digraph mixed_pipeline {
+  label = "Mixed Feature Pipeline"
+  goal  = "Integration test combining sequential, parallel, and conditional execution"
+
+  start [shape=Mdiamond label="Begin"]
+
+  // Sequential preamble
+  setup [shape=parallelogram label="Setup"
+         tool_command="echo SETUP_DONE=true"]
+
+  // Parallel section
+  fan_out [shape=component label="Parallel Work"
+           max_parallel=4 join_policy="wait_all"]
+
+  work_a [shape=parallelogram label="Work A"
+          tool_command="sleep 1 && echo WORK_A_DONE=true"]
+
+  work_b [shape=parallelogram label="Work B"
+          tool_command="sleep 1 && echo WORK_B_DONE=true"]
+
+  fan_in [shape=tripleoctagon label="Consolidate"]
+
+  // Conditional gate after parallel
+  gate [shape=parallelogram label="Check Results"
+        tool_command="echo GATE_CHECK=true"]
+
+  finalize [shape=parallelogram label="Finalize"
+            tool_command="echo PIPELINE_COMPLETE=true"]
+
+  error_handler [shape=parallelogram label="Error Handler"
+                 tool_command="echo ERROR_HANDLED=true"]
+
+  done [shape=Msquare label="Done"]
+
+  start -> setup
+  setup -> fan_out
+  fan_out -> work_a
+  fan_out -> work_b
+  work_a -> fan_in
+  work_b -> fan_in
+  fan_in -> gate
+  gate -> finalize      [condition="outcome=success" label="pass"]
+  gate -> error_handler [condition="outcome=fail"    label="fail"]
+  finalize -> done
+  error_handler -> done
+}

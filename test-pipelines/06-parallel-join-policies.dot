@@ -1,0 +1,32 @@
+// 06 — Parallel Join Policy: first_success
+// Validates: pipeline succeeds even when some branches fail
+// branch_ok succeeds, branch_fail fails → first_success should yield success
+
+digraph parallel_first_success {
+  label = "Parallel First-Success Join"
+  goal  = "Verify first_success join policy tolerates branch failures"
+
+  start [shape=Mdiamond label="Begin"]
+
+  fan_out [shape=component label="Fan Out"
+           max_parallel=4 join_policy="first_success"]
+
+  branch_ok [shape=parallelogram label="Succeeding Branch"
+             tool_command="echo BRANCH_OK=true"]
+
+  branch_fail [shape=parallelogram label="Failing Branch"
+               tool_command="echo BRANCH_FAIL && exit 1"]
+
+  fan_in [shape=tripleoctagon label="Merge"]
+
+  done [shape=Msquare label="Done"]
+
+  start -> fan_out
+  fan_out -> branch_ok
+  fan_out -> branch_fail
+
+  branch_ok -> fan_in
+  branch_fail -> fan_in
+
+  fan_in -> done
+}

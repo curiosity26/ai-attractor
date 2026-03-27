@@ -1,0 +1,32 @@
+// 07 — Parallel All-Fail
+// Validates: wait_all join policy correctly reports failure when all branches fail
+// The fan_in → done edge requires success, so a full failure has no exit path
+
+digraph parallel_all_fail {
+  label = "Parallel All-Fail"
+  goal  = "Verify pipeline reports failure when all parallel branches fail"
+
+  start [shape=Mdiamond label="Begin"]
+
+  fan_out [shape=component label="Fan Out"
+           max_parallel=4 join_policy="wait_all"]
+
+  fail_a [shape=parallelogram label="Fail A"
+          tool_command="echo FAIL_A && exit 1"]
+
+  fail_b [shape=parallelogram label="Fail B"
+          tool_command="echo FAIL_B && exit 1"]
+
+  fan_in [shape=tripleoctagon label="Merge"]
+
+  done [shape=Msquare label="Done"]
+
+  start -> fan_out
+  fan_out -> fail_a
+  fan_out -> fail_b
+
+  fail_a -> fan_in
+  fail_b -> fan_in
+
+  fan_in -> done [condition="outcome=success" label="all passed"]
+}

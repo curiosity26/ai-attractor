@@ -733,7 +733,7 @@ describe('FanInHandler', () => {
     const node = makeNode({ id: 'fan_in', attrs: { shape: 'tripleoctagon', label: 'Fan In' } as GraphNode['attrs'] })
     const outcome = await handler.execute(node, context, makeGraph(), '/tmp/logs')
 
-    expect(outcome.status).toBe('success')
+    expect(outcome.status).toBe('fail')
     expect(outcome.context_updates!['parallel.fan_in.best_id']).toBe('b')
     expect(outcome.context_updates!['parallel.fan_in.best_status']).toBe('success')
   })
@@ -808,7 +808,7 @@ describe('FanInHandler', () => {
     const outcome = await handler.execute(node, context, makeGraph(), '/tmp/logs')
 
     expect(outcome.status).toBe('fail')
-    expect(outcome.failure_reason).toContain('All parallel branches failed')
+    expect(outcome.failure_reason).toContain('2 of 2 branches failed')
   })
 })
 

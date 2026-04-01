@@ -123,7 +123,7 @@ export class FanInHandler implements Handler {
           return `### ${r.nodeId} (${r.status}):\n${detail}`
         })
         .join('\n\n')
-      contextUpdates['failure_context'] = failureDetails.slice(0, 12000)
+      contextUpdates['failure_context'] = failureDetails.slice(0, 64000)
     }
 
     const outcome: Outcome = {

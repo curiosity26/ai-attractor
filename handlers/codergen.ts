@@ -191,7 +191,7 @@ export class CodergenHandler implements Handler {
         last_provider: provider,
         last_model: resolvedModel,
         // Store full response keyed by node ID for downstream context
-        [`response.${node.id}`]: responseText.slice(0, 4000),
+        [`response.${node.id}`]: responseText.slice(0, 32000),
       }
       const contextPattern = /^CONTEXT_SET:\s*(\S+?)=(.*)$/gm
       let match: RegExpExecArray | null
@@ -211,7 +211,7 @@ export class CodergenHandler implements Handler {
       // If this node failed, store the response as failure_context for downstream retry
       if (determinedFail) {
         contextUpdates['failure_context'] = (context.getString('failure_context', '') +
-          `\n\n### ${node.id} REPORTED FAIL:\n${responseText.slice(0, 4000)}`).trim()
+          `\n\n### ${node.id} REPORTED FAIL:\n${responseText.slice(0, 32000)}`).trim()
       }
 
       const outcome: Outcome = {

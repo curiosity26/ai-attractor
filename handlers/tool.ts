@@ -75,7 +75,7 @@ export class ToolHandler implements Handler {
           failure_reason: `Tool exited with code ${result.exitCode}`,
           context_updates: {
             'tool.output': output,
-            'failure_context': `### ${node.id} TOOL FAILED (exit code ${result.exitCode}):\n${output.slice(0, 4000)}`,
+            'failure_context': `### ${node.id} TOOL FAILED (exit code ${result.exitCode}):\n${output.slice(0, 32000)}`,
           },
         }
         writeStageStatus(logsRoot, node.id, outcome)

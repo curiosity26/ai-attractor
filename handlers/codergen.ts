@@ -86,6 +86,7 @@ function execAsync(
     const child = spawn(cmd, args, {
       cwd: process.cwd(),
       env: process.env,
+      stdio: ['ignore', 'pipe', 'pipe'],
     })
 
     let stdout = ''
@@ -126,6 +127,14 @@ export class CodergenHandler implements Handler {
     // 1. Build prompt
     let prompt = node.attrs.prompt || node.attrs.label
     prompt = expandVariables(prompt, graph, context)
+
+    // 1b. Inject failure context from previous runs if this node is being retried
+    const failureContext = context.getString('failure_context', '')
+    if (failureContext) {
+      prompt += `\n\n## FAILURE CONTEXT FROM PREVIOUS RUN\n\nThe following issues were reported by QA validators or other pipeline stages. You MUST address these issues:\n\n${failureContext}`
+      // Clear after injection so it doesn't accumulate forever
+      context.set('failure_context', '')
+    }
 
     // 2. Write prompt to logs
     writeStagePrompt(logsRoot, node.id, prompt)
@@ -181,6 +190,8 @@ export class CodergenHandler implements Handler {
         last_response: responseText.slice(0, 200),
         last_provider: provider,
         last_model: resolvedModel,
+        // Store full response keyed by node ID for downstream context
+        [`response.${node.id}`]: responseText.slice(0, 4000),
       }
       const contextPattern = /^CONTEXT_SET:\s*(\S+?)=(.*)$/gm
       let match: RegExpExecArray | null
@@ -190,11 +201,26 @@ export class CodergenHandler implements Handler {
         contextUpdates[key] = value
       }
 
-      // 8. Return outcome
+      // 8. Determine pass/fail from response content
+      const responseUpper = responseText.toUpperCase()
+      const hasExplicitFail = /\bFAIL\b/.test(responseUpper) && !/\bPASS\b/.test(responseUpper)
+      const hasValidationFail = /VALIDATION[_ ]RESULTS?:\s*FAIL/i.test(responseText)
+      const hasCriticalFail = /CRITICAL\s+(FAIL|ERROR)/i.test(responseText)
+      const determinedFail = hasExplicitFail || hasValidationFail || hasCriticalFail
+
+      // If this node failed, store the response as failure_context for downstream retry
+      if (determinedFail) {
+        contextUpdates['failure_context'] = (context.getString('failure_context', '') +
+          `\n\n### ${node.id} REPORTED FAIL:\n${responseText.slice(0, 4000)}`).trim()
+      }
+
       const outcome: Outcome = {
-        status: 'success',
-        notes: `Stage completed: ${node.id} (${displayName})`,
+        status: determinedFail ? 'fail' : 'success',
+        notes: determinedFail
+          ? `Stage ${node.id} reported FAIL in response (${displayName})`
+          : `Stage completed: ${node.id} (${displayName})`,
         context_updates: contextUpdates,
+        failure_reason: determinedFail ? 'Agent reported FAIL in response text' : undefined,
       }
       writeStageStatus(logsRoot, node.id, outcome)
       return outcome

@@ -111,11 +111,26 @@ export class FanInHandler implements Handler {
 
     writeStageResponse(logsRoot, node.id, `Fan-in results:\n${summary}\nBest: ${best.nodeId}`)
 
+    const allSucceeded = successCount === results.length
+
+    // Aggregate failure context from failed branches for downstream retry nodes
+    if (!allSucceeded) {
+      const failedBranches = results.filter((r) => r.status !== 'success' && r.status !== 'partial_success')
+      const failureDetails = failedBranches
+        .map((r) => {
+          const branchResponse = context.getString(`response.${r.nodeId}`, '')
+          const detail = branchResponse || r.notes || r.failure_reason || 'No details available'
+          return `### ${r.nodeId} (${r.status}):\n${detail}`
+        })
+        .join('\n\n')
+      contextUpdates['failure_context'] = failureDetails.slice(0, 64000)
+    }
+
     const outcome: Outcome = {
-      status: successCount > 0 ? 'success' : 'fail',
+      status: allSucceeded ? 'success' : 'fail',
       notes: `Fan-in: ${successCount}/${results.length} branches succeeded. Best: ${best.nodeId}`,
       context_updates: contextUpdates,
-      failure_reason: successCount === 0 ? 'All parallel branches failed' : undefined,
+      failure_reason: !allSucceeded ? `${results.length - successCount} of ${results.length} branches failed` : undefined,
     }
 
     writeStageStatus(logsRoot, node.id, outcome)
